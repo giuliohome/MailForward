@@ -1,0 +1,24 @@
+﻿<Window x:Class="MailForward.Settings"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MailForward"
+        mc:Ignorable="d"
+        Title="Settings" Height="450" Width="800">
+    <Grid>
+        <Label Content="Text of the email" HorizontalAlignment="Left" Margin="28,168,0,0" VerticalAlignment="Top"/>
+        <TextBox Margin="28,212,46,54" TextWrapping="Wrap" Text="{Binding ForwardedTxt}"
+                 AcceptsReturn="True"
+                 ScrollViewer.CanContentScroll="True" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        
+        
+        <Label Content="Address To:" HorizontalAlignment="Left" Height="26" Margin="28,42,0,0" VerticalAlignment="Top" Width="99"/>
+        <TextBox Height="56" Margin="147,12,46,0" TextWrapping="Wrap" Text="{Binding AddressTo}" VerticalAlignment="Top" />
+
+
+        <Label Content="Address Cc:" HorizontalAlignment="Left" Height="26" Margin="28,122,0,0" VerticalAlignment="Top" Width="99"/>
+        <TextBox Height="56" Margin="147,92,46,0" TextWrapping="Wrap" Text="{Binding AddressCc}" VerticalAlignment="Top" />
+
+    </Grid>
+</Window>

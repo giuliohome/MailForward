@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.757
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailForward", "MailForward.csproj", "{7007843A-FFDE-424F-9995-6A9BC1FF375D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7007843A-FFDE-424F-9995-6A9BC1FF375D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7007843A-FFDE-424F-9995-6A9BC1FF375D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7007843A-FFDE-424F-9995-6A9BC1FF375D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7007843A-FFDE-424F-9995-6A9BC1FF375D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BC6B3487-F444-40F4-9FD7-699262B2FB97}
+	EndGlobalSection
+EndGlobal
