@@ -116,10 +116,13 @@ namespace MailForward
                 OnPropertyChanged();
             }
         }
-        private Outlook.Folder selectedFolder = null;
+        private string folderEntryID = null;
+        private string folderStoreID = null;
         internal async Task SelectFolder()
         {
-            selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
+            Outlook.Folder selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
+            folderEntryID = selectedFolder?.EntryID;
+            folderStoreID = selectedFolder?.StoreID;
             SelFolderName = selectedFolder?.FolderPath ?? "Not Selected";
         }
 
@@ -202,13 +205,14 @@ namespace MailForward
 
         private Outlook.Folder GetOutlookFolder()
         {
-            if (selectedFolder == null)
+            if (folderEntryID == null || folderStoreID == null)
             {
+
                 return null;
             }
             return 
                 application.Session.GetFolderFromID(
-                    selectedFolder.EntryID, selectedFolder.StoreID)
+                    folderEntryID, folderStoreID)
                     as Outlook.Folder;
         }
 
@@ -240,60 +244,6 @@ namespace MailForward
                 Status = exc.Message;
                 folder = null;
             }
-        }
-
-        private void SetCurrentFolder(string folderName)
-        {
-            Outlook.Folder inBox = (Outlook.Folder)
-                application.ActiveExplorer().Session.GetDefaultFolder
-                (Outlook.OlDefaultFolders.olFolderInbox);
-            try
-            {
-                application.ActiveExplorer().CurrentFolder = inBox.
-                    Folders[folderName];
-                application.ActiveExplorer().CurrentFolder.Display();
-            }
-            catch
-            {
-                #if DEBUG
-                Debug.WriteLine("There is no folder named " + folderName +
-                    ".", "Find Folder Name");
-                #endif
-                Status = "There is no folder named " + folderName;
-            }
-        }
-
-        private string ShowFolderInfo()
-        {
-            Outlook.Folder folder =
-                application.Session.PickFolder()
-                as Outlook.Folder;
-            if (folder != null)
-            {
-                //StringBuilder sb = new StringBuilder();
-                //sb.AppendLine("Folder EntryID:");
-                //sb.AppendLine(folder.EntryID);
-                //sb.AppendLine();
-                //sb.AppendLine("Folder StoreID:");
-                //sb.AppendLine(folder.StoreID);
-                //sb.AppendLine();
-                //sb.AppendLine("Unread Item Count: "
-                //    + folder.UnReadItemCount);
-                //sb.AppendLine("Default MessageClass: "
-                //    + folder.DefaultMessageClass);
-                //sb.AppendLine("Current View: "
-                //    + folder.CurrentView.Name);
-                //sb.AppendLine("Folder Path: "
-                //    + folder.FolderPath);
-                //Debug.WriteLine(sb.ToString());
-                Outlook.Folder folderFromID =
-                    application.Session.GetFolderFromID(
-                    folder.EntryID, folder.StoreID)
-                    as Outlook.Folder;
-                folderFromID.Display();
-                return folder.FolderPath;
-            }
-            return "Not Selected";
         }
 
 
