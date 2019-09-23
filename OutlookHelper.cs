@@ -171,7 +171,7 @@ namespace MailForward
                             }
                             newItem.Body = ForwardedTxt + newItem.Body;
                             newItem.Importance = Outlook.OlImportance.olImportanceHigh;
-#if DEBUG
+                            #if DEBUG
                             Debug.WriteLine("forwarding mail: " + mailItem.Subject);
                             var recipientNames = new List<string>();
                             foreach (var objRecipient in mailItem.Recipients)
@@ -185,7 +185,7 @@ namespace MailForward
                                 }
                             }
                             Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
-#endif
+                            #endif
                             newItem.Display(false);
                             //newItem.Save();
                         }
@@ -296,12 +296,9 @@ namespace MailForward
             return "Not Selected";
         }
 
-        public const string Area1 = "Business1";
-        public const string Area2 = "Area 2";
-        public const string Area3 = "Biz 3";
-        public const string AuthFwd = "Authorize";
 
-        public string[] Areas => new string[] { AuthFwd, Area1, Area2, Area3 };
+        public const string AuthFwd = "Authorize";
+        public string[] Areas => new string[] { AuthFwd, Business.Area1, Business.Area2, Business.Area3 };
         public string SelectedArea { get; set; } = AuthFwd;
 
     }
