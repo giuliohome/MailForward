@@ -123,11 +123,6 @@ namespace MailForward
             SelFolderName = selectedFolder?.FolderPath ?? "Not Selected";
         }
 
-        internal int? GetItemNumber()
-        {
-            return selectedFolder?.Items?.Count;
-        }
-
         private string status = "";
         public string Status
         {
@@ -151,51 +146,75 @@ namespace MailForward
             "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
         internal async Task ForwardItems()
         {
-            await Task.Run(() =>
-           {
-               if (GetItemNumber() == 0)
-               {
-                   return;
-               }
-               foreach (var obj in selectedFolder.Items)
-               {
-                   if (obj is Outlook.MailItem mailItem)
-                   {
-                       var newItem = mailItem.Forward();
-                        //newItem.Recipients.Add(AddressTo);
-                        newItem.To = AddressTo;
-                       if (!String.IsNullOrWhiteSpace(AddressCc))
-                       {
-                           newItem.CC = AddressCc;
-                       }
-                       newItem.Body = ForwardedTxt + newItem.Body;
-                       newItem.Importance = Outlook.OlImportance.olImportanceHigh;
-                       #if DEBUG
-                       Debug.WriteLine("forwarding mail: " + mailItem.Subject);
-                       var recipientNames = new List<string>();
-                       foreach (var objRecipient in mailItem.Recipients)
-                       {
-                           if (objRecipient is Outlook.Recipient recipient)
-                           {
-                               Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
-                               string smtpAddress =
-                                   pa.GetProperty(PR_SMTP_ADDRESS).ToString();
-                               recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
-                           }
-                       }
-                       Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
-                       #endif
-                       newItem.Display(false);
-                        //newItem.Save();
+            Status = "Forwarding... pls wait!";
+            Outlook.Folder folder = GetOutlookFolder();
+            if (folder == null || folder.Items.Count == 0)
+            {
+                Status = "No folder/items";
+                return;
+            }
+            try
+            {
+
+                await Task.Run(() =>
+                {
+                    foreach (var obj in folder.Items)
+                    {
+                        if (obj is Outlook.MailItem mailItem)
+                        {
+                            var newItem = mailItem.Forward();
+                            //newItem.Recipients.Add(AddressTo);
+                            newItem.To = AddressTo;
+                            if (!String.IsNullOrWhiteSpace(AddressCc))
+                            {
+                                newItem.CC = AddressCc;
+                            }
+                            newItem.Body = ForwardedTxt + newItem.Body;
+                            newItem.Importance = Outlook.OlImportance.olImportanceHigh;
+#if DEBUG
+                            Debug.WriteLine("forwarding mail: " + mailItem.Subject);
+                            var recipientNames = new List<string>();
+                            foreach (var objRecipient in mailItem.Recipients)
+                            {
+                                if (objRecipient is Outlook.Recipient recipient)
+                                {
+                                    Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
+                                    string smtpAddress =
+                                        pa.GetProperty(PR_SMTP_ADDRESS).ToString();
+                                    recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
+                                }
+                            }
+                            Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
+#endif
+                            newItem.Display(false);
+                            //newItem.Save();
+                        }
                     }
-               }
-           }
-            );
+                }
+                );
+                Status = "Forward done.";
+            }
+            catch (Exception exc)
+            {
+                Status = exc.Message;
+            }
+        }
+
+        private Outlook.Folder GetOutlookFolder()
+        {
+            if (selectedFolder == null)
+            {
+                return null;
+            }
+            return 
+                application.Session.GetFolderFromID(
+                    selectedFolder.EntryID, selectedFolder.StoreID)
+                    as Outlook.Folder;
         }
 
         internal void DisplayFolder()
         {
-            Outlook.Folder folder = selectedFolder;
+            Outlook.Folder folder = GetOutlookFolder();
             if (folder == null)
             {
                 Status = "No Folder selected";
@@ -203,10 +222,7 @@ namespace MailForward
             }
             try
             {
-                Outlook.Folder folderFromID =
-                    application.Session.GetFolderFromID(
-                    folder.EntryID, folder.StoreID)
-                    as Outlook.Folder;
+                
                 var actExpl = application.ActiveExplorer();
                 if (actExpl == null)
                 {
