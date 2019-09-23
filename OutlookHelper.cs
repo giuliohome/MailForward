@@ -43,6 +43,12 @@ namespace MailForward
                         if (fields.Length != 3 || !Areas.Contains(fields[0]) ) continue;
                         switch (fields[1])
                         {
+                            case CsvFolderPath:
+                                FolderPathMap[fields[0]] = fields[2];
+                                continue;
+                            case CsvFolderName:
+                                FolderNameMap[fields[0]] = fields[2];
+                                continue;
                             case CsvAddressTo:
                                 AddressToMap[fields[0]] = fields[2];
                                 continue;
@@ -61,17 +67,32 @@ namespace MailForward
                         ForwardedTxtMap[area] = String.Join("\n", linesMap[area]);
                     }
                 }
+                var folderPath = FolderPathMap.ContainsKey(SelectedArea) ? FolderPathMap[SelectedArea] : "";
+                if (SelectedArea == AuthFwd && folderPath != null)
+                {
+                    var folderKeys = folderPath.Split('\\');
+                    if (folderKeys.Length == 2)
+                    {
+                        folderStoreID = folderKeys[0];
+                        folderEntryID = folderKeys[1];
+                    }
+                }
+                SelFolderName = FolderNameMap.ContainsKey(SelectedArea) ? FolderNameMap[SelectedArea] : "";
                 AddressTo = AddressToMap.ContainsKey(SelectedArea) ? AddressToMap[SelectedArea] : "";
                 AddressCc = AddressCcMap.ContainsKey(SelectedArea) ? AddressCcMap[SelectedArea] : "";
                 ForwardedTxt = ForwardedTxtMap.ContainsKey(SelectedArea) ? ForwardedTxtMap[SelectedArea] : "";
             }
 
         }
+        private const string CsvFolderPath = "Folder Path";
+        private const string CsvFolderName = "Folder Name";
         private const string CsvAddressTo = "Address To";
         private const string CsvAddressCc = "Address Cc";
         private const string CsvForwardedTxt = "Forwarded Text";
         internal async Task SaveConfig()
         {
+            FolderPathMap[SelectedArea] = folderStoreID + "\\" + folderEntryID;
+            FolderNameMap[SelectedArea] = selFolderName;
             AddressToMap[SelectedArea] = AddressTo;
             AddressCcMap[SelectedArea] = AddressCc;
             ForwardedTxtMap[SelectedArea] = ForwardedTxt;
@@ -79,6 +100,14 @@ namespace MailForward
             {
                 foreach (string area in Areas)
                 {
+                    if (FolderNameMap.ContainsKey(area))
+                    {
+                        await sw.WriteLineAsync($"{area}\t{CsvFolderName}\t{FolderNameMap[area].Replace("\t", " ")}");
+                    }
+                    if (FolderPathMap.ContainsKey(area))
+                    {
+                        await sw.WriteLineAsync($"{area}\t{CsvFolderPath}\t{FolderPathMap[area].Replace("\t", " ")}");
+                    }
                     if (AddressToMap.ContainsKey(area))
                     {
                         await sw.WriteLineAsync($"{area}\t{CsvAddressTo}\t{AddressToMap[area].Replace("\t", " ")}");
@@ -120,10 +149,12 @@ namespace MailForward
         private string folderStoreID = null;
         internal async Task SelectFolder()
         {
+            await ReadConfig();
             Outlook.Folder selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
             folderEntryID = selectedFolder?.EntryID;
             folderStoreID = selectedFolder?.StoreID;
             SelFolderName = selectedFolder?.FolderPath ?? "Not Selected";
+            await SaveConfig();
         }
 
         private string status = "";
@@ -136,6 +167,9 @@ namespace MailForward
                 OnPropertyChanged();
             }
         }
+
+        private Dictionary<string, string> FolderPathMap = new Dictionary<string, string>();
+        private Dictionary<string, string> FolderNameMap = new Dictionary<string, string>();
 
         private Dictionary<string, string> AddressToMap = new Dictionary<string, string>();
         private Dictionary<string, string> AddressCcMap = new Dictionary<string, string>();
@@ -151,7 +185,11 @@ namespace MailForward
         {
             Status = "Forwarding... pls wait!";
             Outlook.Folder folder = GetOutlookFolder();
-            if (folder == null || folder.Items.Count == 0)
+            if (folder == null)
+            {
+                return;
+            }
+            if (folder.Items.Count == 0)
             {
                 Status = "No folder/items";
                 return;
@@ -205,15 +243,27 @@ namespace MailForward
 
         private Outlook.Folder GetOutlookFolder()
         {
-            if (folderEntryID == null || folderStoreID == null)
+            try
             {
+                if (String.IsNullOrEmpty(folderEntryID) || String.IsNullOrEmpty(folderStoreID))
+                {
 
+                    Status = "No folder selected";
+                    return null;
+                }
+                return
+                    application.Session.GetFolderFromID(
+                        folderEntryID, folderStoreID)
+                        as Outlook.Folder;
+            }
+            catch (Exception exc)
+            {
+                #if DEBUG
+                Debug.WriteLine(exc.ToString());
+                #endif
+                Status = exc.Message;
                 return null;
             }
-            return 
-                application.Session.GetFolderFromID(
-                    folderEntryID, folderStoreID)
-                    as Outlook.Folder;
         }
 
         internal void DisplayFolder()
@@ -221,7 +271,6 @@ namespace MailForward
             Outlook.Folder folder = GetOutlookFolder();
             if (folder == null)
             {
-                Status = "No Folder selected";
                 return;
             }
             try
