@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+#if DEBUG
 using System.Diagnostics;
+#endif
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -9,10 +11,11 @@ using System.Threading.Tasks;
 using Outlook = Microsoft.Office.Interop.Outlook;
 using System.Configuration;
 using System.IO;
+using MVVM.ViewModel;
 
 namespace MailForward
 {
-    internal class OutlookHelper
+    internal class OutlookHelper : ViewModelBase
     {
         private Outlook.Application application;
         internal OutlookHelper()
@@ -27,30 +30,40 @@ namespace MailForward
             {
                 using (var sr = new StreamReader(settingsPath))
                 {
-                    var lines = new List<string>();
+                    var linesMap = new Dictionary<string, List<string>>();
+                    foreach (string area in Areas)
+                    {
+                        linesMap[area] = new List<string>();
+                    }
                     while (!sr.EndOfStream)
                     {
                         string line = await sr.ReadLineAsync();
                         if (String.IsNullOrWhiteSpace(line)) continue;
                         string[] fields = line.Split('\t');
-                        if (fields.Length != 2) continue;
-                        switch (fields[0])
+                        if (fields.Length != 3 || !Areas.Contains(fields[0]) ) continue;
+                        switch (fields[1])
                         {
                             case CsvAddressTo:
-                                AddressTo = fields[1];
+                                AddressToMap[fields[0]] = fields[2];
                                 continue;
                             case CsvAddressCc:
-                                AddressCc = fields[1];
+                                AddressCcMap[fields[0]] = fields[2];
                                 continue;
                             case CsvForwardedTxt:
-                                lines.Add(fields[1]);
+                                linesMap[fields[0]].Add(fields[2]);
                                 continue;
                             default:
                                 continue;
                         }
                     }
-                    ForwardedTxt = String.Join("\n", lines);
+                    foreach (string area in Areas)
+                    {
+                        ForwardedTxtMap[area] = String.Join("\n", linesMap[area]);
+                    }
                 }
+                AddressTo = AddressToMap.ContainsKey(SelectedArea) ? AddressToMap[SelectedArea] : "";
+                AddressCc = AddressCcMap.ContainsKey(SelectedArea) ? AddressCcMap[SelectedArea] : "";
+                ForwardedTxt = ForwardedTxtMap.ContainsKey(SelectedArea) ? ForwardedTxtMap[SelectedArea] : "";
             }
 
         }
@@ -59,99 +72,123 @@ namespace MailForward
         private const string CsvForwardedTxt = "Forwarded Text";
         internal async Task SaveConfig()
         {
+            AddressToMap[SelectedArea] = AddressTo;
+            AddressCcMap[SelectedArea] = AddressCc;
+            ForwardedTxtMap[SelectedArea] = ForwardedTxt;
             using (var sw = new StreamWriter(ConfigurationManager.AppSettings["settingsPath"], false))
             {
-                await sw.WriteLineAsync($"{CsvAddressTo}\t{AddressTo.Replace("\t"," ")}");
-                if (!String.IsNullOrWhiteSpace(AddressCc))
+                foreach (string area in Areas)
                 {
-                    await sw.WriteLineAsync($"{CsvAddressCc}\t{AddressCc.Replace("\t", " ")}");
-                }
-                if (!String.IsNullOrWhiteSpace(ForwardedTxt))
-                {
-                    foreach (string line in ForwardedTxt.Replace("\t", " ").Split('\n'))
+                    if (AddressToMap.ContainsKey(area))
                     {
-                        await sw.WriteLineAsync($"{CsvForwardedTxt}\t{line}");
-                    } 
-                    
+                        await sw.WriteLineAsync($"{area}\t{CsvAddressTo}\t{AddressToMap[area].Replace("\t", " ")}");
+                    }
+                    if (AddressCcMap.ContainsKey(area))
+                    {
+                        if (!String.IsNullOrWhiteSpace(AddressCcMap[area]))
+                        {
+                            await sw.WriteLineAsync($"{area}\t{CsvAddressCc}\t{AddressCcMap[area].Replace("\t", " ")}");
+                        }
+                    }
+                    if (ForwardedTxtMap.ContainsKey(area))
+                    {
+                        if (!String.IsNullOrWhiteSpace(ForwardedTxtMap[area]))
+                        {
+                            foreach (string line in ForwardedTxtMap[area].Replace("\t", " ").Split('\n'))
+                            {
+                                await sw.WriteLineAsync($"{area}\t{CsvForwardedTxt}\t{line}");
+                            }
+
+                        }
+                    }
                 }
-                
             }
 
         }
 
         private Outlook.Folder selectedFolder = null;
-        internal async Task DisplayFolder()
-        {
-            await Task.Run(() => DisplayFolder(selectedFolder));
-            DisplayFolder(selectedFolder);
-        }
         internal async Task<string> SelectFolder()
         {
             selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
-            return selectedFolder?.FolderPath?? "Not Selected";
+            return selectedFolder?.FolderPath ?? "Not Selected";
         }
 
         internal int? GetItemNumber()
         {
-            return selectedFolder?.Items?.Count ?? 0;
+            return selectedFolder?.Items?.Count;
         }
-        public string AddressTo { get; set; } = ""; // Mbx Some.Grouo <Some.Group@xxx.com>; Name Surname <Name.Surname@xxx.com>;
+
+        private string status = "";
+        public string Status
+        {
+            get { return status; }
+            set
+            {
+                status = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private Dictionary<string, string> AddressToMap = new Dictionary<string, string>();
+        private Dictionary<string, string> AddressCcMap = new Dictionary<string, string>();
+        private Dictionary<string, string> ForwardedTxtMap = new Dictionary<string, string>();
+
+        public string AddressTo { get; set; } = "Name Surname <Name.Surname@xxx.com>; "; 
         public string AddressCc { get; set; } = "";
 
-        public string ForwardedTxt { get; set; } = @"
-
-Request authorized, please follow up.
-
-
-";
+        public string ForwardedTxt { get; set; } = "";
         const string PR_SMTP_ADDRESS =
             "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
         internal async Task ForwardItems()
         {
-            await Task.Run( () =>
-            {
-                if (GetItemNumber() == 0)
-                {
-                    return;
-                }
-                foreach (var obj in selectedFolder.Items)
-                {
-                    if (obj is Outlook.MailItem mailItem)
-                    {
-                        var newItem = mailItem.Forward();
+            await Task.Run(() =>
+           {
+               if (GetItemNumber() == 0)
+               {
+                   return;
+               }
+               foreach (var obj in selectedFolder.Items)
+               {
+                   if (obj is Outlook.MailItem mailItem)
+                   {
+                       var newItem = mailItem.Forward();
                         //newItem.Recipients.Add(AddressTo);
                         newItem.To = AddressTo;
-                        if (!String.IsNullOrWhiteSpace(AddressCc))
-                        {
-                            newItem.CC = AddressCc;
-                        }
-                        newItem.Body = ForwardedTxt + newItem.Body;
-                        newItem.Importance = Outlook.OlImportance.olImportanceHigh;
-                        Debug.WriteLine("forwarding mail: " + mailItem.Subject);
-                        var recipientNames = new List<string>();
-                        foreach (var objRecipient in mailItem.Recipients)
-                        {
-                            if (objRecipient is Outlook.Recipient recipient)
-                            {
-                                Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
-                                string smtpAddress =
-                                    pa.GetProperty(PR_SMTP_ADDRESS).ToString();
-                                recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
-                            }
-                        }
-                        Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
-                        newItem.Display(false);
+                       if (!String.IsNullOrWhiteSpace(AddressCc))
+                       {
+                           newItem.CC = AddressCc;
+                       }
+                       newItem.Body = ForwardedTxt + newItem.Body;
+                       newItem.Importance = Outlook.OlImportance.olImportanceHigh;
+                       #if DEBUG
+                       Debug.WriteLine("forwarding mail: " + mailItem.Subject);
+                       var recipientNames = new List<string>();
+                       foreach (var objRecipient in mailItem.Recipients)
+                       {
+                           if (objRecipient is Outlook.Recipient recipient)
+                           {
+                               Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
+                               string smtpAddress =
+                                   pa.GetProperty(PR_SMTP_ADDRESS).ToString();
+                               recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
+                           }
+                       }
+                       Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
+                       #endif
+                       newItem.Display(false);
                         //newItem.Save();
                     }
-                }
-            }
+               }
+           }
             );
         }
 
-        private void DisplayFolder(Outlook.Folder folder)
+        internal void DisplayFolder()
         {
+            Outlook.Folder folder = selectedFolder;
             if (folder == null)
             {
+                Status = "No Folder selected";
                 return;
             }
             try
@@ -160,12 +197,22 @@ Request authorized, please follow up.
                     application.Session.GetFolderFromID(
                     folder.EntryID, folder.StoreID)
                     as Outlook.Folder;
-                application.ActiveExplorer().CurrentFolder = folder;
-                //folderFromID.Display();
+                var actExpl = application.ActiveExplorer();
+                if (actExpl == null)
+                {
+                    Status = "Pls, open Outlook";
+                    return;
+                }
+                actExpl.CurrentFolder = folder; //folderFromID.Display();
+                Status = "Selected items: " + (folder?.Items?.Count ?? 0);
             }
             catch (Exception exc)
             {
+                #if DEBUG
                 Debug.WriteLine(exc.Message);
+                #endif
+                Status = exc.Message;
+                folder = null;
             }
         }
 
@@ -182,8 +229,11 @@ Request authorized, please follow up.
             }
             catch
             {
+                #if DEBUG
                 Debug.WriteLine("There is no folder named " + folderName +
                     ".", "Find Folder Name");
+                #endif
+                Status = "There is no folder named " + folderName;
             }
         }
 
@@ -219,6 +269,10 @@ Request authorized, please follow up.
             }
             return "Not Selected";
         }
+
+
+        public string[] Areas => new string[] { "Business1", "Area2", "Biz3", "Company4" };
+        public string SelectedArea { get; set; } = AuthFwd;
 
     }
 }

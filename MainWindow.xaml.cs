@@ -25,6 +25,7 @@ namespace MailForward
         {
             InitializeComponent();
             outlookHelper = new OutlookHelper();
+            DataContext = outlookHelper;
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -35,6 +36,7 @@ namespace MailForward
 
         private async void BtnForwardFolder_Click(object sender, RoutedEventArgs e)
         {
+            await outlookHelper.ReadConfig();
             await outlookHelper.ForwardItems();
         }
 
@@ -43,35 +45,24 @@ namespace MailForward
             Close();
         }
 
-        private void RefreshItemCount()
-        {
-            int? itemNum = outlookHelper.GetItemNumber();
-            if (itemNum.HasValue)
-            {
-                LblStatus.Content = "Selected items: " + itemNum;
-            }
-            else
-            {
-                LblStatus.Content = "";
-            }
-        }
-
         private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
+            await outlookHelper.ReadConfig();
             TblFolder.Text = "Not Selected";
             string folder = await outlookHelper.SelectFolder();
             TblFolder.Text = folder;
-            RefreshItemCount();
+            outlookHelper.DisplayFolder();
         }
 
         private async void BtnDisplayFolder_Click(object sender, RoutedEventArgs e)
         {
-            await outlookHelper.DisplayFolder();
-            RefreshItemCount();
+            await outlookHelper.ReadConfig();
+            outlookHelper.DisplayFolder();
         }
 
         private async void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
+            await outlookHelper.ReadConfig();
             var settings = new Settings
             {
                 DataContext = outlookHelper
