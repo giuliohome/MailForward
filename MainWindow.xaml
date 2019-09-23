@@ -36,7 +36,7 @@
                     <SolidColorBrush Color="White" />
                 </Button.Background>
             </Button>
-            <TextBlock TextWrapping="WrapWithOverflow" x:Name="TblFolder" Text="Not Selected" Margin="10,80,10,0" VerticalAlignment="Top" Height="120"/>
+            <TextBlock TextWrapping="WrapWithOverflow" Text="{Binding SelFolderName}" Margin="10,80,10,0" VerticalAlignment="Top" Height="120"/>
             <Button x:Name="BtnDisplayFolder" Content="Show Folder" Margin="10,220,10,0" Height="60" VerticalAlignment="Top" Click="BtnDisplayFolder_Click" FontSize="12" FontWeight="Bold" >
                 <Button.Background>
                     <SolidColorBrush Color="White" />

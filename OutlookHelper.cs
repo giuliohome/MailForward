@@ -106,11 +106,21 @@ namespace MailForward
 
         }
 
+        private string selFolderName = "Not Selected";
+        public string SelFolderName
+        {
+            get { return selFolderName; }
+            set
+            {
+                selFolderName = value;
+                OnPropertyChanged();
+            }
+        }
         private Outlook.Folder selectedFolder = null;
-        internal async Task<string> SelectFolder()
+        internal async Task SelectFolder()
         {
             selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
-            return selectedFolder?.FolderPath ?? "Not Selected";
+            SelFolderName = selectedFolder?.FolderPath ?? "Not Selected";
         }
 
         internal int? GetItemNumber()
@@ -270,8 +280,12 @@ namespace MailForward
             return "Not Selected";
         }
 
+        public const string Area1 = "Business1";
+        public const string Area2 = "Area 2";
+        public const string Area3 = "Biz 3";
+        public const string AuthFwd = "Authorize";
 
-        public string[] Areas => new string[] { "Business1", "Area2", "Biz3", "Company4" };
+        public string[] Areas => new string[] { AuthFwd, Area1, Area2, Area3 };
         public string SelectedArea { get; set; } = AuthFwd;
 
     }

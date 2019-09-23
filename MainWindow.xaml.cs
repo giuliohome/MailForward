@@ -48,9 +48,7 @@ namespace MailForward
         private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
             await outlookHelper.ReadConfig();
-            TblFolder.Text = "Not Selected";
-            string folder = await outlookHelper.SelectFolder();
-            TblFolder.Text = folder;
+            await outlookHelper.SelectFolder();
             outlookHelper.DisplayFolder();
         }
 
