@@ -248,6 +248,7 @@ namespace MailForward
                     var dialog = new Counterparties();
                     dialog.DataContext = new PdfHelper() { Cpties = cpties };
                     dialog.ShowDialog();
+                    await Cpty.Save(SelectedArea, cpties, ConfigurationManager.AppSettings["cptiesPath"], txt => Status = txt);
                 }
                 await Task.Run(() =>
                 {

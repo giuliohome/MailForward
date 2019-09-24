@@ -13,6 +13,26 @@ namespace MailForward
         public string EMail { get; set; } = "";
         public bool Active { get; set; } = true;
         public IEnumerable<FileInfo> pdfFilles;
+
+        private const string On = "active";
+        private const string Off = "inactive";
+        public static async Task Save(string SelectedArea, IEnumerable<Cpty> cpties, string csv_path, Action<string> log)
+        {
+            try
+            {
+                using (var sw = new StreamWriter(csv_path, false))
+                {
+                    foreach (var cpty in cpties)
+                    {
+                        await sw.WriteLineAsync($"{SelectedArea}\t{cpty.Name}\t{cpty.EMail}\t{(cpty.Active ? On : Off)}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                log(exc.Message);
+            }
+        }
     }
 
     public class PdfHelper
