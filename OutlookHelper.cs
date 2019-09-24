@@ -289,7 +289,7 @@ namespace MailForward
                         {
                             Outlook.MailItem mail = application.CreateItem(
                                 Outlook.OlItemType.olMailItem) as Outlook.MailItem;
-                            mail.Subject = SelectedArea + " - " + cpty.Name;
+                            mail.Subject = SelectedArea + " - Netting Statement: " + cpty.Name;
                             mail.To = cpty.EMail;
                             foreach (var pdf in cpty.pdfFilles)
                             {
