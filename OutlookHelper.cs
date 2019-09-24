@@ -275,14 +275,18 @@ namespace MailForward
 
                     } else
                     {
-                        foreach (var pdf in pdfFilles)
+                        var cpties = PdfHelper.ToCpties(pdfFilles);
+                        foreach (var cpty in cpties)
                         {
                             Outlook.MailItem mail = application.CreateItem(
                                 Outlook.OlItemType.olMailItem) as Outlook.MailItem;
-                            mail.Subject = SelectedArea + " - " + pdf.Name;
-                            mail.Attachments.Add(pdf.FullName,
-                                Outlook.OlAttachmentType.olByValue, Type.Missing,
-                                Type.Missing);
+                            mail.Subject = SelectedArea + " - " + cpty.Name;
+                            foreach (var pdf in cpty.pdfFilles)
+                            {
+                                mail.Attachments.Add(pdf.FullName,
+                                    Outlook.OlAttachmentType.olByValue, Type.Missing,
+                                    Type.Missing);
+                            }
                             ComposeMail(mail);
                         }
                     }
@@ -336,7 +340,6 @@ namespace MailForward
             }
             else
             {
-                System.Diagnostics.Process.Start("explorer.exe", SelFolderName);
                 var info = new DirectoryInfo(SelFolderName);
                 pdfFilles = info.EnumerateFiles("*.pdf");
                 return true;
@@ -376,6 +379,7 @@ namespace MailForward
             {
                 if (GetPdfFiles(out IEnumerable<FileInfo> pdfFilles))
                 {
+                    System.Diagnostics.Process.Start("explorer.exe", SelFolderName);
                     Status = "pdf files: " + pdfFilles.Count();
                 }
             }
