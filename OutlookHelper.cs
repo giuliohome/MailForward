@@ -208,7 +208,6 @@ namespace MailForward
 
         private void ComposeMail(Outlook.MailItem newItem)
         {
-            newItem.To = AddressTo;
             if (!String.IsNullOrWhiteSpace(AddressCc))
             {
                 newItem.CC = AddressCc;
@@ -223,6 +222,7 @@ namespace MailForward
         {
             Status = "Forwarding... pls wait!";
             Outlook.Folder folder = null;
+            Cpty[] cpties = new Cpty[0];
             IEnumerable<FileInfo> pdfFilles = null;
             if (SelectedArea == AuthFwd)
             {
@@ -242,7 +242,13 @@ namespace MailForward
             }
             try
             {
-
+                if (SelectedArea != AuthFwd)
+                {
+                    cpties = PdfHelper.ToCpties(pdfFilles).ToArray();
+                    var dialog = new Counterparties();
+                    dialog.DataContext = new PdfHelper() { Cpties = cpties };
+                    dialog.ShowDialog();
+                }
                 await Task.Run(() =>
                 {
 
@@ -269,18 +275,19 @@ namespace MailForward
                                 #endif
 
                                 var newItem = mailItem.Forward();
+                                newItem.To = AddressTo;
                                 ComposeMail(newItem);
                             }
                         }
 
                     } else
                     {
-                        var cpties = PdfHelper.ToCpties(pdfFilles);
-                        foreach (var cpty in cpties)
+                        foreach (var cpty in cpties.Where(c => c.Active))
                         {
                             Outlook.MailItem mail = application.CreateItem(
                                 Outlook.OlItemType.olMailItem) as Outlook.MailItem;
                             mail.Subject = SelectedArea + " - " + cpty.Name;
+                            mail.To = cpty.EMail;
                             foreach (var pdf in cpty.pdfFilles)
                             {
                                 mail.Attachments.Add(pdf.FullName,

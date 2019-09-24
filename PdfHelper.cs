@@ -9,14 +9,16 @@ namespace MailForward
 {
     public class Cpty
     {
-        public string Name = "";
-        public string EMail = "";
-        public bool Active = true;
+        public string Name { get; set; } = "";
+        public string EMail { get; set; } = "";
+        public bool Active { get; set; } = true;
         public IEnumerable<FileInfo> pdfFilles;
     }
 
     public class PdfHelper
     {
+        public Cpty[] Cpties { get; set; }
+
         public static IEnumerable<Cpty> ToCpties(IEnumerable<FileInfo> pdfFilles)
         {
             return pdfFilles

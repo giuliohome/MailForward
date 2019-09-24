@@ -60,11 +60,18 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Business.cs" />
+    <Compile Include="Counterparties.xaml.cs">
+      <DependentUpon>Counterparties.xaml</DependentUpon>
+    </Compile>
     <Compile Include="PdfHelper.cs" />
     <Compile Include="Settings.xaml.cs">
       <DependentUpon>Settings.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModelBase3.cs" />
+    <Page Include="Counterparties.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
