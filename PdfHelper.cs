@@ -11,30 +11,34 @@ namespace MailForward
     {
         public string Name { get; set; } = "";
         public string EMail { get; set; } = "";
+        public string BusinessArea = "";
         public bool Active { get; set; } = true;
         public IEnumerable<FileInfo> pdfFilles;
 
         private const string On = "active";
         private const string Off = "inactive";
-        public static async Task<List<Cpty>> Read(string SelectedArea, string csv_path)
+        public static async Task<List<Cpty>> Read(string csv_path)
         {
             var cpties = new List<Cpty>();
+            if (String.IsNullOrWhiteSpace(csv_path) || !File.Exists(csv_path)) return cpties;
             using (var sr = new StreamReader(csv_path))
             {
                 while (!sr.EndOfStream)
                 {
                     var line = await sr.ReadLineAsync();
                     var fields = line.Split('\t');
-                    if (fields.Length == 4 && fields[0] == SelectedArea)
+                    if (fields.Length == 4)
                     {
-                        cpties.Add(new Cpty()
-                            { Name = fields[1], EMail = fields[2], Active = fields[3] == On });
+                        cpties.Add(new Cpty() {
+                            BusinessArea = fields[0],
+                            Name = fields[1], EMail = fields[2],
+                            Active = fields[3] == On });
                     }
                 }
             }
             return cpties;
         }
-        public static async Task Save(string SelectedArea, IEnumerable<Cpty> cpties, string csv_path, Action<string> log)
+        public static async Task Save(IEnumerable<Cpty> cpties, string csv_path, Action<string> log)
         {
             try
             {
@@ -42,7 +46,7 @@ namespace MailForward
                 {
                     foreach (var cpty in cpties)
                     {
-                        await sw.WriteLineAsync($"{SelectedArea}\t{cpty.Name}\t{cpty.EMail}\t{(cpty.Active ? On : Off)}");
+                        await sw.WriteLineAsync($"{cpty.BusinessArea}\t{cpty.Name}\t{cpty.EMail}\t{(cpty.Active ? On : Off)}");
                     }
                 }
             }
@@ -57,15 +61,16 @@ namespace MailForward
     {
         public Cpty[] Cpties { get; set; }
 
-        public static IEnumerable<Cpty> ToCpties(IEnumerable<FileInfo> pdfFilles, IEnumerable<Cpty> savedCpties)
+        public static IEnumerable<Cpty> ToCpties(string SelectedArea, IEnumerable<FileInfo> pdfFilles, IEnumerable<Cpty> savedCpties)
         {
             return pdfFilles
                 .Select(pdf => new { Name = pdf.Name.Split('_')[0], pdf})
                 .GroupBy(n => n.Name, (k,lst) => {
-                    Cpty found = savedCpties.FirstOrDefault(c => c.Name == k);
+                    Cpty found = savedCpties.FirstOrDefault(c => 
+                        c.Name == k && c.BusinessArea == SelectedArea);
                     return new Cpty()
                         {
-                            Name = k,
+                            Name = k, BusinessArea = SelectedArea,
                             EMail = found?.EMail ?? "",
                             Active = found?.Active ?? true,
                             pdfFilles = lst

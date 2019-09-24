@@ -244,12 +244,13 @@ namespace MailForward
             {
                 if (SelectedArea != AuthFwd)
                 {
-                    var savedCpties = await Cpty.Read(SelectedArea, cpty_path);
-                    cpties = PdfHelper.ToCpties(pdfFilles, savedCpties).ToArray();
+                    var savedCpties = await Cpty.Read(cpty_path);
+                    cpties = PdfHelper.ToCpties(SelectedArea, pdfFilles, savedCpties).ToArray();
                     var dialog = new Counterparties();
                     dialog.DataContext = new PdfHelper() { Cpties = cpties };
                     dialog.ShowDialog();
-                    await Cpty.Save(SelectedArea, cpties, ConfigurationManager.AppSettings["cptiesPath"], txt => Status = txt);
+                    var allCpties = cpties.Concat(savedCpties.Where(s => s.BusinessArea != SelectedArea));
+                    await Cpty.Save(allCpties, ConfigurationManager.AppSettings["cptiesPath"], txt => Status = txt);
                 }
                 await Task.Run(() =>
                 {

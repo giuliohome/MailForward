@@ -57,7 +57,7 @@
                     <GradientStop Color="#FD558DA8" Offset="0.54"/>
                 </RadialGradientBrush>
             </Grid.Background>
-            <Label Content="{Binding Status}" Margin="0,0,0,0" HorizontalAlignment="Center" Width="250" Height="30" VerticalAlignment="Center" Foreground="#FFF30808" Background="{x:Null}" FontWeight="Bold"/>
+            <Label Content="{Binding Status}" Margin="0,0,0,0" HorizontalAlignment="Center" Width="350" Height="30" VerticalAlignment="Center" Foreground="#FFF30808" Background="{x:Null}" FontWeight="Bold"/>
             <Button x:Name="BtnSettings" HorizontalAlignment="Left" Margin="30,0,0,0" VerticalAlignment="Center"  Width="60" Height="60" Click="BtnSettings_Click">
                 <Image Source="settings-circle-blue-512.png" />
             </Button>
