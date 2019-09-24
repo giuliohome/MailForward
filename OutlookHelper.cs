@@ -205,54 +205,85 @@ namespace MailForward
         public string ForwardedTxt { get; set; } = "";
         const string PR_SMTP_ADDRESS =
             "http://schemas.microsoft.com/mapi/proptag/0x39FE001E";
+
+        private void ComposeMail(Outlook.MailItem newItem)
+        {
+            newItem.To = AddressTo;
+            if (!String.IsNullOrWhiteSpace(AddressCc))
+            {
+                newItem.CC = AddressCc;
+            }
+            newItem.Body = ForwardedTxt + newItem.Body;
+            newItem.Importance = Outlook.OlImportance.olImportanceHigh;
+            newItem.Display(false);
+            //newItem.Save();
+        }
+
         internal async Task ForwardItems()
         {
             Status = "Forwarding... pls wait!";
-            Outlook.Folder folder = GetOutlookFolder();
-            if (folder == null)
+            Outlook.Folder folder = null;
+            IEnumerable<FileInfo> pdfFilles = null;
+            if (SelectedArea == AuthFwd)
             {
-                return;
-            }
-            if (folder.Items.Count == 0)
+                folder = GetOutlookFolder();
+                if (folder == null)
+                {
+                    return;
+                }
+                if (folder.Items.Count == 0)
+                {
+                    Status = "No folder/items";
+                    return;
+                }
+            } else
             {
-                Status = "No folder/items";
-                return;
+                if (!GetPdfFiles(out pdfFilles)) return;
             }
             try
             {
 
                 await Task.Run(() =>
                 {
-                    foreach (var obj in folder.Items)
+
+                    if (SelectedArea == AuthFwd)
                     {
-                        if (obj is Outlook.MailItem mailItem)
+                        foreach (var obj in folder.Items)
                         {
-                            var newItem = mailItem.Forward();
-                            //newItem.Recipients.Add(AddressTo);
-                            newItem.To = AddressTo;
-                            if (!String.IsNullOrWhiteSpace(AddressCc))
+                            if (obj is Outlook.MailItem mailItem)
                             {
-                                newItem.CC = AddressCc;
-                            }
-                            newItem.Body = ForwardedTxt + newItem.Body;
-                            newItem.Importance = Outlook.OlImportance.olImportanceHigh;
-                            #if DEBUG
-                            Debug.WriteLine("forwarding mail: " + mailItem.Subject);
-                            var recipientNames = new List<string>();
-                            foreach (var objRecipient in mailItem.Recipients)
-                            {
-                                if (objRecipient is Outlook.Recipient recipient)
+                                #if DEBUG
+                                Debug.WriteLine("forwarding mail: " + mailItem.Subject);
+                                var recipientNames = new List<string>();
+                                foreach (var objRecipient in mailItem.Recipients)
                                 {
-                                    Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
-                                    string smtpAddress =
-                                        pa.GetProperty(PR_SMTP_ADDRESS).ToString();
-                                    recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
+                                    if (objRecipient is Outlook.Recipient recipient)
+                                    {
+                                        Outlook.PropertyAccessor pa = recipient.PropertyAccessor;
+                                        string smtpAddress =
+                                            pa.GetProperty(PR_SMTP_ADDRESS).ToString();
+                                        recipientNames.Add($"{recipient.Name} <{smtpAddress}>");
+                                    }
                                 }
+                                Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
+                                #endif
+
+                                var newItem = mailItem.Forward();
+                                ComposeMail(newItem);
                             }
-                            Debug.WriteLine($"sent to {String.Join("; ", recipientNames)}");
-                            #endif
-                            newItem.Display(false);
-                            //newItem.Save();
+                        }
+
+                    } else
+                    {
+                        foreach (var pdf in pdfFilles)
+                        {
+                            Outlook.MailItem mail = application.CreateItem(
+                                Outlook.OlItemType.olMailItem) as Outlook.MailItem;
+                            mail.Subject = SelectedArea + " - " + pdf.Name;
+                            mail.Attachments.Add(pdf.FullName,
+                                Outlook.OlAttachmentType.olByValue, Type.Missing,
+                                Type.Missing);
+                            ComposeMail(mail);
                         }
                     }
                 }
@@ -290,6 +321,28 @@ namespace MailForward
             }
         }
 
+        private bool GetPdfFiles(out IEnumerable<FileInfo> pdfFilles)
+        {
+            pdfFilles = null;
+            if (SelFolderName == NotSelected || String.IsNullOrWhiteSpace(SelFolderName))
+            {
+                Status = NotSelected;
+                return false;
+            }
+            if (!Directory.Exists(SelFolderName))
+            {
+                Status = "Dir not found!";
+                return false;
+            }
+            else
+            {
+                System.Diagnostics.Process.Start("explorer.exe", SelFolderName);
+                var info = new DirectoryInfo(SelFolderName);
+                pdfFilles = info.EnumerateFiles("*.pdf");
+                return true;
+            }
+        }
+
         internal void DisplayFolder()
         {
             if (SelectedArea == AuthFwd)
@@ -321,20 +374,9 @@ namespace MailForward
                 }
             } else
             {
-                if (SelFolderName == NotSelected || String.IsNullOrWhiteSpace(SelFolderName))
+                if (GetPdfFiles(out IEnumerable<FileInfo> pdfFilles))
                 {
-                    Status = NotSelected;
-                    return;
-                }
-                if (!Directory.Exists(SelFolderName))
-                {
-                    Status = "Dir not found!";
-                } else
-                {
-                    Process.Start("explorer.exe", SelFolderName);
-                    var info = new DirectoryInfo(SelFolderName);
-                    int pdfNum = info.EnumerateFiles("*.pdf").Count();
-                    Status = "pdf files: " + pdfNum;
+                    Status = "pdf files: " + pdfFilles.Count();
                 }
             }
         }
