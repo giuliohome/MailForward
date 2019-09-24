@@ -12,6 +12,7 @@ using Outlook = Microsoft.Office.Interop.Outlook;
 using System.Configuration;
 using System.IO;
 using MVVM.ViewModel;
+using Microsoft.Win32;
 
 namespace MailForward
 {
@@ -76,6 +77,10 @@ namespace MailForward
                         folderStoreID = folderKeys[0];
                         folderEntryID = folderKeys[1];
                     }
+                } else
+                {
+                    folderStoreID = "";
+                    folderEntryID = "";
                 }
                 SelFolderName = FolderNameMap.ContainsKey(SelectedArea) ? FolderNameMap[SelectedArea] : "";
                 AddressTo = AddressToMap.ContainsKey(SelectedArea) ? AddressToMap[SelectedArea] : "";
@@ -135,7 +140,8 @@ namespace MailForward
 
         }
 
-        private string selFolderName = "Not Selected";
+        private const string NotSelected = "Not Selected";
+        private string selFolderName = NotSelected;
         public string SelFolderName
         {
             get { return selFolderName; }
@@ -150,10 +156,28 @@ namespace MailForward
         internal async Task SelectFolder()
         {
             await ReadConfig();
-            Outlook.Folder selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
-            folderEntryID = selectedFolder?.EntryID;
-            folderStoreID = selectedFolder?.StoreID;
-            SelFolderName = selectedFolder?.FolderPath ?? "Not Selected";
+            if (SelectedArea == AuthFwd)
+            {
+                Outlook.Folder selectedFolder = await Task.Run(() => application.Session.PickFolder() as Outlook.Folder);
+                folderEntryID = selectedFolder?.EntryID;
+                folderStoreID = selectedFolder?.StoreID;
+                SelFolderName = selectedFolder?.FolderPath ?? NotSelected;
+            } else
+            {
+                var dialog = new OpenFileDialog();
+                dialog.Title = "select a pdf for " + SelectedArea;
+                dialog.DefaultExt = ".pdf";
+                var res = dialog.ShowDialog();
+                if (res??false == true)
+                {
+                    SelFolderName = Path.GetDirectoryName(dialog.FileName);
+                } else
+                {
+                    SelFolderName = NotSelected;
+                    folderStoreID = "";
+                    folderEntryID = "";
+                }
+            }
             await SaveConfig();
         }
 
@@ -268,37 +292,66 @@ namespace MailForward
 
         internal void DisplayFolder()
         {
-            Outlook.Folder folder = GetOutlookFolder();
-            if (folder == null)
+            if (SelectedArea == AuthFwd)
             {
-                return;
-            }
-            try
-            {
-                
-                var actExpl = application.ActiveExplorer();
-                if (actExpl == null)
+                Outlook.Folder folder = GetOutlookFolder();
+                if (folder == null)
                 {
-                    Status = "Pls, open Outlook";
                     return;
                 }
-                actExpl.CurrentFolder = folder; //folderFromID.Display();
-                Status = "Selected items: " + (folder?.Items?.Count ?? 0);
-            }
-            catch (Exception exc)
+                try
+                {
+
+                    var actExpl = application.ActiveExplorer();
+                    if (actExpl == null)
+                    {
+                        Status = "Pls, open Outlook";
+                        return;
+                    }
+                    actExpl.CurrentFolder = folder; //folderFromID.Display();
+                    Status = "Selected emails: " + (folder?.Items?.Count ?? 0);
+                }
+                catch (Exception exc)
+                {
+                    #if DEBUG
+                    Debug.WriteLine(exc.Message);
+                    #endif
+                    Status = exc.Message;
+                    folder = null;
+                }
+            } else
             {
-                #if DEBUG
-                Debug.WriteLine(exc.Message);
-                #endif
-                Status = exc.Message;
-                folder = null;
+                if (SelFolderName == NotSelected || String.IsNullOrWhiteSpace(SelFolderName))
+                {
+                    Status = NotSelected;
+                    return;
+                }
+                if (!Directory.Exists(SelFolderName))
+                {
+                    Status = "Dir not found!";
+                } else
+                {
+                    Process.Start("explorer.exe", SelFolderName);
+                    var info = new DirectoryInfo(SelFolderName);
+                    int pdfNum = info.EnumerateFiles("*.pdf").Count();
+                    Status = "pdf files: " + pdfNum;
+                }
             }
         }
 
 
         public const string AuthFwd = "Authorize";
         public string[] Areas => new string[] { AuthFwd, Business.Area1, Business.Area2, Business.Area3 };
-        public string SelectedArea { get; set; } = AuthFwd;
+        private string selArea = AuthFwd;
+        public string SelectedArea {
+            get { return selArea; }
+            set
+            {
+                selArea = value;
+                OnPropertyChanged();
+                Task.Run( async () => await ReadConfig());
+            }
+        } 
 
     }
 }
