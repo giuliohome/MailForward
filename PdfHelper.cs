@@ -16,6 +16,24 @@ namespace MailForward
 
         private const string On = "active";
         private const string Off = "inactive";
+        public static async Task<List<Cpty>> Read(string SelectedArea, string csv_path)
+        {
+            var cpties = new List<Cpty>();
+            using (var sr = new StreamReader(csv_path))
+            {
+                while (!sr.EndOfStream)
+                {
+                    var line = await sr.ReadLineAsync();
+                    var fields = line.Split('\t');
+                    if (fields.Length == 4 && fields[0] == SelectedArea)
+                    {
+                        cpties.Add(new Cpty()
+                            { Name = fields[1], EMail = fields[2], Active = fields[3] == On });
+                    }
+                }
+            }
+            return cpties;
+        }
         public static async Task Save(string SelectedArea, IEnumerable<Cpty> cpties, string csv_path, Action<string> log)
         {
             try
@@ -39,15 +57,21 @@ namespace MailForward
     {
         public Cpty[] Cpties { get; set; }
 
-        public static IEnumerable<Cpty> ToCpties(IEnumerable<FileInfo> pdfFilles)
+        public static IEnumerable<Cpty> ToCpties(IEnumerable<FileInfo> pdfFilles, IEnumerable<Cpty> savedCpties)
         {
             return pdfFilles
                 .Select(pdf => new { Name = pdf.Name.Split('_')[0], pdf})
-                .GroupBy(n => n.Name, (k,lst) => 
-                    new Cpty() {
-                        Name = k,
-                        pdfFilles = lst
-                            .Select(elem => elem.pdf) });
+                .GroupBy(n => n.Name, (k,lst) => {
+                    Cpty found = savedCpties.FirstOrDefault(c => c.Name == k);
+                    return new Cpty()
+                        {
+                            Name = k,
+                            EMail = found?.EMail ?? "",
+                            Active = found?.Active ?? true,
+                            pdfFilles = lst
+                                .Select(elem => elem.pdf)
+                        };
+                    });
         }
     }
 }

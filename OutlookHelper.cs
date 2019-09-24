@@ -217,7 +217,7 @@ namespace MailForward
             newItem.Display(false);
             //newItem.Save();
         }
-
+        private string cpty_path = ConfigurationManager.AppSettings["cptiesPath"];
         internal async Task ForwardItems()
         {
             Status = "Forwarding... pls wait!";
@@ -244,7 +244,8 @@ namespace MailForward
             {
                 if (SelectedArea != AuthFwd)
                 {
-                    cpties = PdfHelper.ToCpties(pdfFilles).ToArray();
+                    var savedCpties = await Cpty.Read(SelectedArea, cpty_path);
+                    cpties = PdfHelper.ToCpties(pdfFilles, savedCpties).ToArray();
                     var dialog = new Counterparties();
                     dialog.DataContext = new PdfHelper() { Cpties = cpties };
                     dialog.ShowDialog();
