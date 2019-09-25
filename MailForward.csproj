@@ -154,5 +154,8 @@
   <ItemGroup>
     <Resource Include="settings-circle-blue-512.png" />
   </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="Mail-Forwarding1-696x388.jpg" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -21,7 +21,11 @@ namespace MailForward
         private Outlook.Application application;
         internal OutlookHelper()
         {
-            application = new Outlook.Application();
+        }
+
+        internal async Task StartOutlook()
+        {
+            await Task.Run(() => application = new Outlook.Application());
         }
 
         internal async Task ReadConfig()

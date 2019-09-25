@@ -30,6 +30,7 @@ namespace MailForward
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            await outlookHelper.StartOutlook();
             await outlookHelper.ReadConfig();
         }
 
